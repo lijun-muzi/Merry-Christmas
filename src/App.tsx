@@ -11,15 +11,15 @@ function App() {
 
       <div className="ui-overlay">
         <div>
-          <div className="branding">ARIX • LUMINAIRE</div>
+          <div className="branding">祝·小面包</div>
           <p className="tagline">
-            Arix Signature Interactive Christmas Tree —— 深祖母绿的冷静与金属金的高光交叠，
-            让圣诞的层叠光晕以电影级的质感在指尖流动。
+            希望你在圣诞节这天、以及以后都能天天开心。愿你的每个清晨都有光、每个夜晚都有安宁，
+            所想皆如愿，所行皆坦途。
           </p>
         </div>
         <div className="scene-title">
-          <h1>Golden Aurora Tree</h1>
-          <p>互动旋转 · 光晕耀金 · 沉浸声光场</p>
+          <h1>Merry Christmas</h1>
+          <p>May this season wrap you in warmth, and may joy find you in every little moment.</p>
         </div>
         <div className="controls">
           <span className="badge">拖拽旋转 / 滚轮缩放</span>
