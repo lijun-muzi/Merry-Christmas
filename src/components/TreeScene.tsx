@@ -1,8 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Sparkles, Stars, useTexture } from '@react-three/drei';
+import { OrbitControls, Sparkles, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration, Vignette, DepthOfField } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
-import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   CatmullRomCurve3,
   Color,
@@ -18,6 +18,7 @@ import {
   RepeatWrapping,
   SRGBColorSpace,
   Texture,
+  TextureLoader,
   Vector3,
 } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -381,18 +382,86 @@ function FloatingPhotos({
     []
   );
   const photoUrls = useMemo(() => Object.values(photoModules).sort(), [photoModules]);
-  const textures = useTexture(photoUrls) as Texture[];
   const { gl } = useThree();
+  const [textures, setTextures] = useState<(Texture | null)[]>([]);
+
+  const fallbackTexture = useMemo(() => {
+    if (typeof document === 'undefined') return null;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.fillStyle = '#f7f2e8';
+    ctx.fillRect(0, 0, size, size);
+    const glow = ctx.createLinearGradient(0, 0, size, size);
+    glow.addColorStop(0, 'rgba(245, 215, 110, 0.18)');
+    glow.addColorStop(1, 'rgba(12, 34, 30, 0.12)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = 'rgba(180, 150, 80, 0.55)';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(12, 12, size - 24, size - 24);
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }, []);
 
   useEffect(() => {
-    textures.forEach((texture) => {
-      texture.colorSpace = SRGBColorSpace;
-      texture.anisotropy = gl.capabilities.getMaxAnisotropy();
-      texture.minFilter = LinearMipMapLinearFilter;
-      texture.magFilter = LinearFilter;
-      texture.needsUpdate = true;
-    });
-  }, [textures, gl]);
+    if (photoUrls.length === 0) return;
+    let cancelled = false;
+    const loader = new TextureLoader();
+    const total = photoUrls.length;
+    setTextures(Array.from({ length: total }, () => null));
+    let cursor = 0;
+    const maxInflight = 4;
+
+    const loadTexture = (url: string) =>
+      new Promise<Texture | null>((resolve) => {
+        loader.load(
+          url,
+          (texture) => {
+            texture.colorSpace = SRGBColorSpace;
+            texture.anisotropy = gl.capabilities.getMaxAnisotropy();
+            texture.minFilter = LinearMipMapLinearFilter;
+            texture.magFilter = LinearFilter;
+            texture.needsUpdate = true;
+            resolve(texture);
+          },
+          undefined,
+          () => resolve(null)
+        );
+      });
+
+    const worker = async () => {
+      while (!cancelled && cursor < total) {
+        const index = cursor;
+        cursor += 1;
+        const texture = await loadTexture(photoUrls[index]);
+        if (cancelled) return;
+        setTextures((prev) => {
+          const next = prev.length === total ? [...prev] : Array.from({ length: total }, () => null);
+          next[index] = texture;
+          return next;
+        });
+      }
+    };
+
+    for (let i = 0; i < maxInflight; i += 1) {
+      worker();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [photoUrls, gl]);
+
+  const renderTextures = useMemo(() => {
+    if (!fallbackTexture) return [];
+    return photoUrls.map((_, index) => textures[index] ?? fallbackTexture);
+  }, [photoUrls, textures, fallbackTexture]);
 
   const positions = useMemo(() => {
     const pts: { pos: Vector3; rot: Vector3; scale: number; phase: number }[] = [];
@@ -431,14 +500,14 @@ function FloatingPhotos({
     return items;
   }, [photoUrls.length, focusCenter]);
 
-  if (photoUrls.length === 0) return null;
+  if (renderTextures.length === 0) return null;
 
   return (
     <group name="photo-cards">
       {positions.map((p, idx) => (
         <PhotoCard
           key={photoUrls[idx] ?? idx}
-          texture={textures[idx % textures.length]}
+          texture={renderTextures[idx % renderTextures.length]}
           position={p.pos}
           rotation={p.rot}
           focusPosition={focusRing[idx % focusRing.length].pos}

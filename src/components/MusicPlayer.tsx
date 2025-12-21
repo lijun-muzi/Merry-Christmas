@@ -72,7 +72,7 @@ export default function MusicPlayer() {
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
-      audioRef.current.preload = 'metadata';
+      audioRef.current.preload = 'auto';
       audioRef.current.volume = 0.7;
     }
     const audio = audioRef.current;
@@ -109,6 +109,7 @@ export default function MusicPlayer() {
     if (!audio || tracks.length === 0 || !isReady) return;
     audio.src = tracks[currentIndex].src;
     audio.currentTime = 0;
+    audio.load();
     setCurrentTime(0);
     setDuration(0);
     lastSavedTimeRef.current = 0;
