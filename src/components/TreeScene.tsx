@@ -265,6 +265,7 @@ function PhotoCard({
   collapseRef,
 }: PhotoCardProps) {
   const ref = useRef<Group>(null);
+  const frameMatRef = useRef<MeshPhysicalMaterial>(null);
   const tempPos = useMemo(() => new Vector3(), []);
   const { camera } = useThree();
   useFrame((state) => {
@@ -293,6 +294,10 @@ function PhotoCard({
 
     const s = scale * (1 + smooth * 0.55);
     ref.current.scale.setScalar(Math.max(0.001, s));
+
+    if (frameMatRef.current) {
+      frameMatRef.current.emissiveIntensity = 0.38 + Math.sin(t * 2 + phase) * 0.08;
+    }
   });
 
   const frameWidth = 1.08;
@@ -323,7 +328,16 @@ function PhotoCard({
     <group ref={ref} castShadow>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[frameWidth, frameHeight, frameDepth]} />
-        <meshPhysicalMaterial color="#f1d38a" metalness={0.25} roughness={0.4} clearcoat={0.35} />
+        <meshPhysicalMaterial
+          ref={frameMatRef}
+          color="#f5d76e"
+          emissive="#f9e8a1"
+          emissiveIntensity={0.38}
+          metalness={1}
+          roughness={0.15}
+          clearcoat={1}
+          clearcoatRoughness={0.08}
+        />
       </mesh>
       <mesh position={[0, 0, frameDepth * 0.2]} castShadow receiveShadow>
         <boxGeometry args={[matteWidth, matteHeight, frameDepth * 0.4]} />

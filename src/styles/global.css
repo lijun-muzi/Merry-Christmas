@@ -49,6 +49,13 @@ body {
   grid-template-rows: auto 1fr auto;
   padding: 24px;
   z-index: 2;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ui-overlay * {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .branding {
