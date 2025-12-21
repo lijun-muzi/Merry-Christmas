@@ -46,18 +46,6 @@ function SceneLights() {
   );
 }
 
-function CameraRig() {
-  const { camera, pointer } = useThree();
-  useFrame(() => {
-    const targetX = pointer.x * 0.25;
-    const targetY = 1.5 + pointer.y * 0.25;
-    camera.position.x += (targetX - camera.position.x) * 0.02;
-    camera.position.y += (targetY - camera.position.y) * 0.02;
-    camera.lookAt(0, 1.2, 0);
-  });
-  return null;
-}
-
 function OrnamentField({ count = 120, explodeRef }: { count?: number; explodeRef: React.RefObject<number> }) {
   const ornaments = useMemo(() => {
     const list: { position: Vector3; scale: number; gold: boolean; red: boolean }[] = [];
@@ -257,22 +245,54 @@ type PhotoCardProps = {
   texture: Texture;
   position: Vector3;
   rotation: Vector3;
+  focusPosition: Vector3;
+  focusRotation: Vector3;
   scale: number;
   phase: number;
   explodeRef: React.RefObject<number>;
+  collapseRef: React.RefObject<number>;
 };
 
-function PhotoCard({ texture, position, rotation, scale, phase, explodeRef }: PhotoCardProps) {
+function PhotoCard({
+  texture,
+  position,
+  rotation,
+  focusPosition,
+  focusRotation,
+  scale,
+  phase,
+  explodeRef,
+  collapseRef,
+}: PhotoCardProps) {
   const ref = useRef<Group>(null);
-  useFrame((state, delta) => {
+  const tempPos = useMemo(() => new Vector3(), []);
+  const { camera } = useThree();
+  useFrame((state) => {
     if (!ref.current) return;
     const t = state.clock.getElapsedTime();
-    ref.current.position.set(position.x, position.y + Math.sin(t * 0.8 + phase) * 0.08, position.z);
-    ref.current.rotation.set(rotation.x, rotation.y + t * 0.2, rotation.z);
+    const target = collapseRef.current ?? 0;
     const f = explodeRef.current ?? 0;
-    const s = scale * (1 - f * 0.6);
+    const blend = Math.min(1, Math.max(0, f + (target - f) * 0.4));
+    const smooth = blend * blend * (3 - 2 * blend);
+    const floatAmp = 0.08 * (1 - smooth * 0.5);
+
+    tempPos.copy(position).lerp(focusPosition, smooth);
+    tempPos.y += Math.sin(t * 0.8 + phase) * floatAmp;
+    ref.current.position.copy(tempPos);
+
+    const baseSpin = t * (0.2 - smooth * 0.14);
+    const rotX = rotation.x + (focusRotation.x - rotation.x) * smooth;
+    const rotY = rotation.y + (focusRotation.y - rotation.y) * smooth + baseSpin;
+    const rotZ = rotation.z + (focusRotation.z - rotation.z) * smooth;
+    ref.current.rotation.set(rotX, rotY, rotZ);
+
+    if (smooth > 0.35) {
+      ref.current.lookAt(camera.position);
+      ref.current.rotateZ(rotZ * 0.35);
+    }
+
+    const s = scale * (1 + smooth * 0.55);
     ref.current.scale.setScalar(Math.max(0.001, s));
-    ref.current.visible = f < 0.98;
   });
 
   const frameWidth = 1.08;
@@ -299,11 +319,11 @@ function PhotoCard({ texture, position, rotation, scale, phase, explodeRef }: Ph
       </mesh>
       <mesh position={[0, 0, photoOffset]} castShadow>
         <planeGeometry args={[photoWidth, photoHeight]} />
-        <meshStandardMaterial map={texture} roughness={0.6} metalness={0.05} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0, -photoOffset]} rotation={[0, Math.PI, 0]} castShadow>
         <planeGeometry args={[photoWidth, photoHeight]} />
-        <meshStandardMaterial map={texture} roughness={0.6} metalness={0.05} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
       <group position={[bowOffsetX, bowOffsetY, bowOffsetZ]}>
         <mesh scale={[0.18, 0.11, 0.07]}>
@@ -323,7 +343,15 @@ function PhotoCard({ texture, position, rotation, scale, phase, explodeRef }: Ph
   );
 }
 
-function FloatingPhotos({ explodeRef }: { explodeRef: React.RefObject<number> }) {
+function FloatingPhotos({
+  explodeRef,
+  collapseRef,
+  focusCenter,
+}: {
+  explodeRef: React.RefObject<number>;
+  collapseRef: React.RefObject<number>;
+  focusCenter: [number, number, number];
+}) {
   const photoModules = useMemo(
     () =>
       import.meta.glob('/images/*.{jpg,JPG,jpeg,JPEG,png,PNG}', {
@@ -365,6 +393,24 @@ function FloatingPhotos({ explodeRef }: { explodeRef: React.RefObject<number> })
     return pts;
   }, [photoUrls.length]);
 
+  const focusRing = useMemo(() => {
+    const count = Math.max(1, photoUrls.length);
+    const radius = Math.min(2.9, 1.7 + count * 0.04);
+    const baseY = focusCenter[1];
+    const items: { pos: Vector3; rot: Vector3 }[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2;
+      const yJitter = (Math.sin(i * 1.7) + Math.cos(i * 0.9)) * 0.18 + (Math.random() - 0.5) * 0.18;
+      const rJitter = Math.sin(i * 1.3) * 0.16 + (Math.random() - 0.5) * 0.12;
+      const r = Math.max(0.6, radius + rJitter);
+      items.push({
+        pos: new Vector3(Math.cos(angle) * r, baseY + yJitter, Math.sin(angle) * r),
+        rot: new Vector3(0.04, angle + Math.PI, 0),
+      });
+    }
+    return items;
+  }, [photoUrls.length, focusCenter]);
+
   if (photoUrls.length === 0) return null;
 
   return (
@@ -375,9 +421,12 @@ function FloatingPhotos({ explodeRef }: { explodeRef: React.RefObject<number> })
           texture={textures[idx % textures.length]}
           position={p.pos}
           rotation={p.rot}
+          focusPosition={focusRing[idx % focusRing.length].pos}
+          focusRotation={focusRing[idx % focusRing.length].rot}
           scale={p.scale}
           phase={p.phase}
           explodeRef={explodeRef}
+          collapseRef={collapseRef}
         />
       ))}
     </group>
@@ -979,7 +1028,6 @@ function TreeBody({
       <GoldenRibbon explodeRef={explodeRef} />
       <StarTop explodeRef={explodeRef} />
       <NeonStar explodeRef={explodeRef} />
-      <FloatingPhotos explodeRef={explodeRef} />
 
       <Sparkles
         count={220}
@@ -1053,10 +1101,15 @@ function TreeScene() {
   const collapseRef = useRef(0);
   const treePos: [number, number, number] = [-0.1, 0.3, 0];
   const treeScale = 0.84;
+  const treeTarget: [number, number, number] = [treePos[0], treePos[1] + 0.5, treePos[2]];
+  const photoFocusCenter: [number, number, number] = [
+    treeTarget[0] - treePos[0],
+    treeTarget[1] - treePos[1],
+    treeTarget[2] - treePos[2],
+  ];
   return (
     <>
       <SceneLights />
-      <CameraRig />
       <OrbitControls
         ref={controlsRef}
         enableDamping
@@ -1064,11 +1117,12 @@ function TreeScene() {
         minDistance={3.8}
         maxDistance={9}
         maxPolarAngle={Math.PI / 1.8}
-        target={[treePos[0], 1.1, treePos[2]]}
+        target={treeTarget}
       />
       <Suspense fallback={null}>
         <group position={treePos} scale={treeScale}>
           <TreeBody explodeRef={explodeRef} collapseRef={collapseRef} />
+          <FloatingPhotos explodeRef={explodeRef} collapseRef={collapseRef} focusCenter={photoFocusCenter} />
           <Ground />
           <ExplosionVoxels controlsRef={controlsRef} explodeRef={explodeRef} collapseRef={collapseRef} />
         </group>
