@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import MusicPlayer from './components/MusicPlayer';
+import SnowLayer from './components/SnowLayer';
 import TreeScene from './components/TreeScene';
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
       <div className="hero-gradient" />
       <div className="corner-orb right" />
       <div className="corner-orb left" />
+      <SnowLayer count={300} />
 
       <div className="ui-overlay">
         <div>

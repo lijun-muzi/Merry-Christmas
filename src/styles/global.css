@@ -302,6 +302,37 @@ body {
   left: -5%;
 }
 
+.snow-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.snowflake {
+  position: absolute;
+  top: -10vh;
+  width: var(--snow-size);
+  height: var(--snow-size);
+  border-radius: 50%;
+  opacity: var(--snow-opacity);
+  background: radial-gradient(circle at 30% 30%, #ffffff, rgba(255, 255, 255, 0.2));
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+  animation: snowfall var(--snow-duration) linear infinite;
+  animation-delay: var(--snow-delay);
+  transform: translate3d(0, 0, 0);
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translate3d(0, -10vh, 0);
+  }
+  100% {
+    transform: translate3d(var(--snow-drift), 120vh, 0);
+  }
+}
+
 .canvas-wrapper {
   position: absolute;
   inset: 0;
