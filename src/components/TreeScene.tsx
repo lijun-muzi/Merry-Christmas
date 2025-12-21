@@ -1,20 +1,23 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Sparkles, Stars } from '@react-three/drei';
+import { OrbitControls, Sparkles, Stars, useTexture } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration, Vignette, DepthOfField } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
-import { Suspense, useMemo, useRef, type RefObject } from 'react';
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react';
 import {
   CatmullRomCurve3,
   Color,
   CanvasTexture,
   Group,
   InstancedMesh,
+  LinearFilter,
+  LinearMipMapLinearFilter,
   Matrix4,
   Mesh,
   MeshPhysicalMaterial,
   Object3D,
   RepeatWrapping,
   SRGBColorSpace,
+  Texture,
   Vector3,
 } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -250,53 +253,134 @@ function GiftBoxes({ explodeRef, count = 36 }: { explodeRef: React.RefObject<num
   );
 }
 
-function FloatingCards({ explodeRef, count = 14 }: { explodeRef: React.RefObject<number>; count?: number }) {
-  const instancedRef = useRef<InstancedMesh>(null);
-  const dummy = useMemo(() => new Object3D(), []);
+type PhotoCardProps = {
+  texture: Texture;
+  position: Vector3;
+  rotation: Vector3;
+  scale: number;
+  phase: number;
+  explodeRef: React.RefObject<number>;
+};
+
+function PhotoCard({ texture, position, rotation, scale, phase, explodeRef }: PhotoCardProps) {
+  const ref = useRef<Group>(null);
+  useFrame((state, delta) => {
+    if (!ref.current) return;
+    const t = state.clock.getElapsedTime();
+    ref.current.position.set(position.x, position.y + Math.sin(t * 0.8 + phase) * 0.08, position.z);
+    ref.current.rotation.set(rotation.x, rotation.y + t * 0.2, rotation.z);
+    const f = explodeRef.current ?? 0;
+    const s = scale * (1 - f * 0.6);
+    ref.current.scale.setScalar(Math.max(0.001, s));
+    ref.current.visible = f < 0.98;
+  });
+
+  const frameWidth = 1.08;
+  const frameHeight = 1.5;
+  const frameDepth = 0.05;
+  const matteWidth = 1.0;
+  const matteHeight = 1.42;
+  const photoWidth = 0.92;
+  const photoHeight = 1.3;
+  const photoOffset = frameDepth * 0.55;
+  const bowOffsetX = frameWidth * 0.42;
+  const bowOffsetY = frameHeight * 0.42;
+  const bowOffsetZ = frameDepth * 0.6;
+
+  return (
+    <group ref={ref} castShadow>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[frameWidth, frameHeight, frameDepth]} />
+        <meshPhysicalMaterial color="#f1d38a" metalness={0.25} roughness={0.4} clearcoat={0.35} />
+      </mesh>
+      <mesh position={[0, 0, frameDepth * 0.2]} castShadow receiveShadow>
+        <boxGeometry args={[matteWidth, matteHeight, frameDepth * 0.4]} />
+        <meshStandardMaterial color="#f7f2e8" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0, photoOffset]} castShadow>
+        <planeGeometry args={[photoWidth, photoHeight]} />
+        <meshStandardMaterial map={texture} roughness={0.6} metalness={0.05} />
+      </mesh>
+      <mesh position={[0, 0, -photoOffset]} rotation={[0, Math.PI, 0]} castShadow>
+        <planeGeometry args={[photoWidth, photoHeight]} />
+        <meshStandardMaterial map={texture} roughness={0.6} metalness={0.05} />
+      </mesh>
+      <group position={[bowOffsetX, bowOffsetY, bowOffsetZ]}>
+        <mesh scale={[0.18, 0.11, 0.07]}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshStandardMaterial color="#b5121b" emissive="#7f0e14" emissiveIntensity={0.35} />
+        </mesh>
+        <mesh position={[-0.12, 0, 0]} scale={[0.22, 0.12, 0.07]} rotation={[0, 0.4, 0]}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshStandardMaterial color="#b5121b" emissive="#7f0e14" emissiveIntensity={0.35} />
+        </mesh>
+        <mesh position={[0.12, 0, 0]} scale={[0.22, 0.12, 0.07]} rotation={[0, -0.4, 0]}>
+          <sphereGeometry args={[1, 16, 16]} />
+          <meshStandardMaterial color="#b5121b" emissive="#7f0e14" emissiveIntensity={0.35} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function FloatingPhotos({ explodeRef }: { explodeRef: React.RefObject<number> }) {
+  const photoModules = useMemo(
+    () =>
+      import.meta.glob('/images/*.{jpg,JPG,jpeg,JPEG,png,PNG}', {
+        eager: true,
+        import: 'default',
+      }) as Record<string, string>,
+    []
+  );
+  const photoUrls = useMemo(() => Object.values(photoModules).sort(), [photoModules]);
+  const textures = useTexture(photoUrls) as Texture[];
+  const { gl } = useThree();
+
+  useEffect(() => {
+    textures.forEach((texture) => {
+      texture.colorSpace = SRGBColorSpace;
+      texture.anisotropy = gl.capabilities.getMaxAnisotropy();
+      texture.minFilter = LinearMipMapLinearFilter;
+      texture.magFilter = LinearFilter;
+      texture.needsUpdate = true;
+    });
+  }, [textures, gl]);
+
   const positions = useMemo(() => {
-    const pts: { pos: Vector3; rot: Vector3; scale: number }[] = [];
+    const pts: { pos: Vector3; rot: Vector3; scale: number; phase: number }[] = [];
+    const count = Math.max(1, photoUrls.length);
     for (let i = 0; i < count; i += 1) {
-      const radius = 2.4 + Math.random() * 0.8;
-      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+      const radius = 2.4 + Math.random() * 0.9;
+      const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const y = Math.random() * 2.0 - 0.1; // 限制上飘高度，避免靠近星顶
+      const y = Math.random() * 2.0 - 0.2;
       pts.push({
         pos: new Vector3(x, y, z),
-        rot: new Vector3(Math.random() * 0.6 - 0.3, Math.random() * Math.PI * 2, Math.random() * 0.3 - 0.15),
-        scale: 0.28 + Math.random() * 0.1,
+        rot: new Vector3((Math.random() - 0.5) * 0.3, angle + Math.PI, (Math.random() - 0.5) * 0.2),
+        scale: 0.3 + Math.random() * 0.08,
+        phase: Math.random() * Math.PI * 2,
       });
     }
     return pts;
-  }, [count]);
+  }, [photoUrls.length]);
 
-  useFrame((_, delta) => {
-    const f = explodeRef.current ?? 0;
-    positions.forEach((p, i) => {
-      dummy.position.copy(p.pos);
-      dummy.position.y += Math.sin((performance.now() * 0.001 + i) * 0.8) * 0.08;
-      dummy.rotation.set(p.rot.x, p.rot.y + delta * 0.4, p.rot.z);
-      dummy.scale.setScalar(p.scale * (1 - f * 0.6));
-      dummy.updateMatrix();
-      instancedRef.current?.setMatrixAt(i, dummy.matrix);
-    });
-    if (instancedRef.current) {
-      instancedRef.current.instanceMatrix.needsUpdate = true;
-    }
-  });
+  if (photoUrls.length === 0) return null;
 
   return (
-    <instancedMesh ref={instancedRef} args={[undefined, undefined, count]} castShadow>
-      <planeGeometry args={[1, 1.4]} />
-      <meshStandardMaterial
-        color="#d9d6cf"
-        emissive="#f5d76e"
-        emissiveIntensity={0.1}
-        metalness={0.2}
-        roughness={0.7}
-        side={2}
-      />
-    </instancedMesh>
+    <group name="photo-cards">
+      {positions.map((p, idx) => (
+        <PhotoCard
+          key={photoUrls[idx] ?? idx}
+          texture={textures[idx % textures.length]}
+          position={p.pos}
+          rotation={p.rot}
+          scale={p.scale}
+          phase={p.phase}
+          explodeRef={explodeRef}
+        />
+      ))}
+    </group>
   );
 }
 
@@ -895,7 +979,7 @@ function TreeBody({
       <GoldenRibbon explodeRef={explodeRef} />
       <StarTop explodeRef={explodeRef} />
       <NeonStar explodeRef={explodeRef} />
-      <FloatingCards explodeRef={explodeRef} />
+      <FloatingPhotos explodeRef={explodeRef} />
 
       <Sparkles
         count={220}
