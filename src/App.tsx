@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
+import MusicPlayer from './components/MusicPlayer';
 import TreeScene from './components/TreeScene';
 
 function App() {
@@ -21,9 +22,12 @@ function App() {
           <h1>Merry Christmas</h1>
           <p>May this season wrap you in warmth, and may joy find you in every little moment.</p>
         </div>
-        <div className="controls">
-          <span className="badge">拖拽旋转 / 滚轮缩放</span>
-          <span className="badge">指针悬停提升流光</span>
+        <div className="bottom-stack">
+          <div className="controls">
+            <span className="badge">拖拽旋转 / 滚轮缩放</span>
+            <span className="badge">指针悬停提升流光</span>
+          </div>
+          <MusicPlayer />
         </div>
       </div>
 
