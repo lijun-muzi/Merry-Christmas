@@ -466,10 +466,127 @@ function ExplosionVoxels({
     return texture;
   };
 
+  const createRibbonedSphereTexture = (base: string, ribbon: string, accent: string) => {
+    if (typeof document === 'undefined') return undefined;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.fillStyle = ribbon;
+    const band = size * 0.18;
+    ctx.fillRect(0, size * 0.5 - band / 2, size, band);
+    ctx.fillRect(size * 0.5 - band / 2, 0, band, size);
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = size * 0.015;
+    for (let i = 0; i < 6; i += 1) {
+      const offset = (i / 6) * size;
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.1 + offset, 0);
+      ctx.lineTo(size * 0.9 + offset, size);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = accent;
+    for (let i = 0; i < 18; i += 1) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * size, Math.random() * size, size * 0.012, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(1, 1);
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  };
+
+  const createFestiveSphereTexture = (base: string, ribbon: string, accent: string, sparkle: string) => {
+    if (typeof document === 'undefined') return undefined;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath();
+    ctx.arc(size * 0.35, size * 0.35, size * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+
+    const band = size * 0.2;
+    ctx.fillStyle = ribbon;
+    ctx.fillRect(0, size * 0.5 - band / 2, size, band);
+    ctx.fillRect(size * 0.5 - band / 2, 0, band, size);
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = size * 0.018;
+    ctx.strokeRect(0, size * 0.5 - band / 2, size, band);
+    ctx.strokeRect(size * 0.5 - band / 2, 0, band, size);
+
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.ellipse(size * 0.5 - band * 0.18, size * 0.5, band * 0.28, band * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(size * 0.5 + band * 0.18, size * 0.5, band * 0.28, band * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = sparkle;
+    ctx.beginPath();
+    ctx.arc(size * 0.5, size * 0.5, band * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.strokeStyle = sparkle;
+    ctx.globalAlpha = 0.25;
+    ctx.lineWidth = size * 0.012;
+    for (let i = -size; i < size * 2; i += size * 0.22) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + size, size);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.fillStyle = sparkle;
+    for (let i = 0; i < 28; i += 1) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * size, Math.random() * size, size * 0.012, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(1, 1);
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  };
+
   const giftTextures = useMemo(
     () => ({
       gold: createGiftTexture('#d4b246', '#b5121b', '#fff2cc'),
       red: createGiftTexture('#b5121b', '#f5d76e', '#ffecc0'),
+    }),
+    []
+  );
+
+  const sphereTextures = useMemo(
+    () => ({
+      gold: createFestiveSphereTexture('#f1d38a', '#b5121b', '#0f4c3b', '#fff2cc'),
+      red: createRibbonedSphereTexture('#b5121b', '#f5d76e', '#ffecc0'),
     }),
     []
   );
@@ -541,8 +658,8 @@ function ExplosionVoxels({
   const goldSpheres = useMemo(() => makeBurst(80, 0.04, 0.08), []);
   const redSpheres = useMemo(() => makeBurst(80, 0.045, 0.085), []);
   const whiteSpheres = useMemo(() => makeBurst(160, 0.035, 0.07), []);
-  const goldBoxes = useMemo(() => makeBoxes(50, 0.05, 0.1), []);
-  const redBoxes = useMemo(() => makeBoxes(35, 0.05, 0.09), []);
+  const goldBoxes = useMemo(() => makeBoxes(75, 0.05, 0.1), []);
+  const redBoxes = useMemo(() => makeBoxes(53, 0.05, 0.09), []);
   const snowFlakes = useMemo(() => makeBurst(600, 0.01, 0.02, 4.2), []);
   const goldCards = useMemo(() => {
     const arr: { pos: Vector3; dir: Vector3; size: number; rot: Vector3 }[] = [];
@@ -648,12 +765,30 @@ function ExplosionVoxels({
 
       <instancedMesh ref={goldSphereRef} args={[undefined, undefined, goldSpheres.length]} castShadow receiveShadow>
         <sphereGeometry args={[1, 12, 12]} />
-        <meshStandardMaterial color="#f5d76e" emissive="#f5d76e" emissiveIntensity={0.6} metalness={0.9} roughness={0.25} />
+        <meshPhysicalMaterial
+          map={sphereTextures.gold}
+          color="#ffffff"
+          emissive="#f5d76e"
+          emissiveIntensity={0.45}
+          metalness={0.8}
+          roughness={0.25}
+          clearcoat={0.6}
+          clearcoatRoughness={0.22}
+        />
       </instancedMesh>
 
       <instancedMesh ref={redSphereRef} args={[undefined, undefined, redSpheres.length]} castShadow receiveShadow>
         <sphereGeometry args={[1, 12, 12]} />
-        <meshStandardMaterial color="#b5121b" emissive="#b5121b" emissiveIntensity={0.45} metalness={0.85} roughness={0.28} />
+        <meshPhysicalMaterial
+          map={sphereTextures.red}
+          color="#ffffff"
+          emissive="#b5121b"
+          emissiveIntensity={0.38}
+          metalness={0.75}
+          roughness={0.28}
+          clearcoat={0.55}
+          clearcoatRoughness={0.25}
+        />
       </instancedMesh>
 
       <instancedMesh ref={whiteSphereRef} args={[undefined, undefined, whiteSpheres.length]} castShadow receiveShadow>
