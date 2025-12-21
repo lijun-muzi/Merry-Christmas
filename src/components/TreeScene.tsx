@@ -457,6 +457,8 @@ function CoreSilhouette({ explodeRef }: { explodeRef: React.RefObject<number> })
 }
 
 function GoldenRibbon({ explodeRef }: { explodeRef: React.RefObject<number> }) {
+  const meshRef = useRef<Mesh>(null);
+  const matRef = useRef<MeshPhysicalMaterial>(null);
   const curve = useMemo(() => {
     const pts: Vector3[] = [];
     const turns = 3.8;
@@ -475,10 +477,23 @@ function GoldenRibbon({ explodeRef }: { explodeRef: React.RefObject<number> }) {
     return new CatmullRomCurve3(pts);
   }, []);
 
+  useFrame(() => {
+    const f = explodeRef.current ?? 0;
+    const clamped = Math.min(1, Math.max(0, f));
+    const opacity = 1 - clamped;
+    if (matRef.current) {
+      matRef.current.opacity = opacity;
+    }
+    if (meshRef.current) {
+      meshRef.current.visible = opacity > 0.02;
+    }
+  });
+
   return (
-    <mesh castShadow>
+    <mesh ref={meshRef} castShadow>
       <tubeGeometry args={[curve, 400, 0.08, 12, false]} />
       <meshPhysicalMaterial
+        ref={matRef}
         color={new Color('#f5d76e')}
         emissive={new Color('#f7e2a7')}
         emissiveIntensity={0.8}
@@ -487,7 +502,7 @@ function GoldenRibbon({ explodeRef }: { explodeRef: React.RefObject<number> }) {
         clearcoat={0.8}
         reflectivity={1}
         transparent
-        opacity={1 - (explodeRef.current ?? 0)}
+        opacity={1}
       />
     </mesh>
   );
@@ -519,6 +534,8 @@ function StarTop({ explodeRef }: { explodeRef: React.RefObject<number> }) {
 }
 
 function NeonStar({ explodeRef }: { explodeRef: React.RefObject<number> }) {
+  const meshRef = useRef<Mesh>(null);
+  const matRef = useRef<MeshStandardMaterial>(null);
   const path = useMemo(() => {
     const rOuter = 0.55;
     const rInner = 0.24;
@@ -531,18 +548,31 @@ function NeonStar({ explodeRef }: { explodeRef: React.RefObject<number> }) {
     points.push(points[0].clone());
     return new CatmullRomCurve3(points, false);
   }, []);
-  const opacity = 0.85 * (1 - (explodeRef.current ?? 0));
+
+  useFrame(() => {
+    const f = explodeRef.current ?? 0;
+    const clamped = Math.min(1, Math.max(0, f));
+    const opacity = 0.85 * (1 - clamped);
+    if (matRef.current) {
+      matRef.current.opacity = opacity;
+    }
+    if (meshRef.current) {
+      meshRef.current.visible = opacity > 0.02;
+    }
+  });
+
   return (
-    <mesh position={[0, 3.3, 0]}>
+    <mesh ref={meshRef} position={[0, 3.3, 0]}>
       <tubeGeometry args={[path, 120, 0.05, 12, false]} />
       <meshStandardMaterial
+        ref={matRef}
         color="#ff3b3b"
         emissive="#ff3b3b"
         emissiveIntensity={1.8}
         metalness={0.6}
         roughness={0.25}
         transparent
-        opacity={opacity}
+        opacity={0.85}
       />
     </mesh>
   );
