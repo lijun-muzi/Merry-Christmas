@@ -1130,6 +1130,8 @@ function Atmosphere() {
 }
 
 function PostEffects() {
+  const { size } = useThree();
+  const dofHeight = Math.min(900, Math.max(600, Math.round(size.height * 0.8)));
   return (
     <EffectComposer multisampling={4}>
       <Bloom
@@ -1139,7 +1141,7 @@ function PostEffects() {
         mipmapBlur
       />
       <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={[0.0007, 0.0007]} />
-      <DepthOfField focusDistance={0.017} focalLength={0.03} bokehScale={2.8} height={480} />
+      <DepthOfField focusDistance={0.017} focalLength={0.03} bokehScale={2.2} height={dofHeight} />
       <Vignette eskil={false} offset={0.22} darkness={0.85} />
     </EffectComposer>
   );
