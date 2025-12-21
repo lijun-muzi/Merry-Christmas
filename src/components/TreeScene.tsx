@@ -6,12 +6,15 @@ import { Suspense, useMemo, useRef, type RefObject } from 'react';
 import {
   CatmullRomCurve3,
   Color,
+  CanvasTexture,
   Group,
   InstancedMesh,
   Matrix4,
   Mesh,
   MeshPhysicalMaterial,
   Object3D,
+  RepeatWrapping,
+  SRGBColorSpace,
   Vector3,
 } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -423,6 +426,54 @@ function ExplosionVoxels({
   explodeRef: React.RefObject<number>;
   count?: number;
 }) {
+  const createGiftTexture = (base: string, stripe: string, accent: string) => {
+    if (typeof document === 'undefined') return undefined;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.strokeStyle = stripe;
+    ctx.lineWidth = size * 0.12;
+    for (let x = -size; x < size * 2; x += size * 0.35) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + size, size);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = accent;
+    const dot = size * 0.05;
+    for (let y = dot; y < size; y += size * 0.2) {
+      for (let x = dot; x < size; x += size * 0.2) {
+        ctx.beginPath();
+        ctx.arc(x, y, dot * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(2, 2);
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  };
+
+  const giftTextures = useMemo(
+    () => ({
+      gold: createGiftTexture('#d4b246', '#b5121b', '#fff2cc'),
+      red: createGiftTexture('#b5121b', '#f5d76e', '#ffecc0'),
+    }),
+    []
+  );
+
   const base = useMemo(() => {
     const pts: { pos: Vector3; dir: Vector3; size: number }[] = [];
     for (let i = 0; i < count; i += 1) {
@@ -612,7 +663,16 @@ function ExplosionVoxels({
 
       <instancedMesh ref={goldBoxRef} args={[undefined, undefined, goldBoxes.length]} castShadow receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#d4b246" emissive="#cba53a" emissiveIntensity={0.35} metalness={0.7} roughness={0.5} />
+        <meshPhysicalMaterial
+          map={giftTextures.gold}
+          color="#ffffff"
+          emissive="#cba53a"
+          emissiveIntensity={0.2}
+          metalness={0.55}
+          roughness={0.42}
+          clearcoat={0.6}
+          clearcoatRoughness={0.25}
+        />
       </instancedMesh>
 
       <instancedMesh ref={goldRibbonXRef} args={[undefined, undefined, goldBoxes.length]} castShadow receiveShadow>
@@ -626,7 +686,16 @@ function ExplosionVoxels({
 
       <instancedMesh ref={redBoxRef} args={[undefined, undefined, redBoxes.length]} castShadow receiveShadow>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#b5121b" emissive="#9a0f17" emissiveIntensity={0.32} metalness={0.65} roughness={0.55} />
+        <meshPhysicalMaterial
+          map={giftTextures.red}
+          color="#ffffff"
+          emissive="#9a0f17"
+          emissiveIntensity={0.18}
+          metalness={0.5}
+          roughness={0.45}
+          clearcoat={0.55}
+          clearcoatRoughness={0.3}
+        />
       </instancedMesh>
 
       <instancedMesh ref={redRibbonXRef} args={[undefined, undefined, redBoxes.length]} castShadow receiveShadow>
