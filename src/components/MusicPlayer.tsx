@@ -5,6 +5,13 @@ type Track = {
   src: string;
 };
 
+type StoredState = {
+  name: string;
+  time: number;
+};
+
+const STORAGE_KEY = 'merry-music-state';
+
 function formatTrackName(path: string) {
   const filename = path.split('/').pop() ?? path;
   const decoded = decodeURIComponent(filename);
@@ -30,10 +37,37 @@ export default function MusicPlayer() {
   }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const resumeRef = useRef<StoredState | null>(null);
+  const lastSavedTimeRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const isPlayingRef = useRef(isPlaying);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (tracks.length === 0) return;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as StoredState;
+        const index = tracks.findIndex((track) => track.name === parsed.name);
+        if (index >= 0 && Number.isFinite(parsed.time)) {
+          setCurrentIndex(index);
+          setCurrentTime(Math.max(0, parsed.time));
+          resumeRef.current = { name: parsed.name, time: Math.max(0, parsed.time) };
+        }
+      }
+    } catch {
+      // ignore storage failures
+    }
+    setIsReady(true);
+  }, [tracks]);
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -42,52 +76,103 @@ export default function MusicPlayer() {
       audioRef.current.volume = 0.7;
     }
     const audio = audioRef.current;
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoaded = () => setDuration(audio.duration || 0);
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      const shouldSave = Math.abs(audio.currentTime - lastSavedTimeRef.current) >= 1;
+      if (!shouldSave || tracks.length === 0) return;
+      lastSavedTimeRef.current = audio.currentTime;
+      const currentTrack = tracks[currentIndex];
+      if (!currentTrack) return;
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ name: currentTrack.name, time: audio.currentTime })
+        );
+      } catch {
+        // ignore storage failures
+      }
+    };
     const handleEnded = () => {
       setCurrentIndex((prev) => (prev + 1) % tracks.length);
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoaded);
     audio.addEventListener('ended', handleEnded);
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoaded);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [tracks.length]);
+  }, [tracks.length, tracks, currentIndex]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || tracks.length === 0) return;
+    if (!audio || tracks.length === 0 || !isReady) return;
     audio.src = tracks[currentIndex].src;
     audio.currentTime = 0;
     setCurrentTime(0);
     setDuration(0);
+    lastSavedTimeRef.current = 0;
+    const applyResume = () => {
+      const resume = resumeRef.current;
+      if (!resume || resume.name !== tracks[currentIndex].name || resume.time <= 0) return;
+      const safeTime = Math.min(resume.time, Math.max(0, (audio.duration || resume.time) - 0.25));
+      audio.currentTime = safeTime;
+      setCurrentTime(safeTime);
+      resumeRef.current = null;
+    };
+    const handleLoadedMeta = () => {
+      setDuration(audio.duration || 0);
+      applyResume();
+    };
     const handleCanPlay = () => {
-      if (isPlaying) {
+      applyResume();
+      if (isPlayingRef.current) {
         audio.play().catch(() => setIsPlaying(false));
       }
     };
+    audio.addEventListener('loadedmetadata', handleLoadedMeta, { once: true });
     audio.addEventListener('canplay', handleCanPlay, { once: true });
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       audio.play().catch(() => setIsPlaying(false));
     }
     return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMeta);
       audio.removeEventListener('canplay', handleCanPlay);
     };
-  }, [currentIndex, tracks, isPlaying]);
+  }, [currentIndex, tracks, isReady]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !isReady) return;
     if (isPlaying) {
       audio.play().catch(() => setIsPlaying(false));
     } else {
       audio.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, isReady]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || tracks.length === 0) return;
+    const handleVisibility = () => {
+      const currentTrack = tracks[currentIndex];
+      if (!currentTrack) return;
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ name: currentTrack.name, time: audio.currentTime })
+        );
+      } catch {
+        // ignore storage failures
+      }
+    };
+    window.addEventListener('beforeunload', handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [tracks, currentIndex]);
 
   if (tracks.length === 0) return null;
   const currentTrack = tracks[currentIndex];
@@ -140,6 +225,16 @@ export default function MusicPlayer() {
             setCurrentTime(value);
             if (audioRef.current) {
               audioRef.current.currentTime = value;
+            }
+            const currentTrack = tracks[currentIndex];
+            if (!currentTrack) return;
+            try {
+              localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify({ name: currentTrack.name, time: value })
+              );
+            } catch {
+              // ignore storage failures
             }
           }}
         />
