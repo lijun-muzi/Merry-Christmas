@@ -1,9 +1,43 @@
 import { Canvas } from '@react-three/fiber';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import MusicPlayer from './components/MusicPlayer';
 import TreeScene from './components/TreeScene';
 
 function App() {
+  const [blessingState, setBlessingState] = useState<'hidden' | 'shown' | 'hiding'>('hidden');
+  const blessTimerRef = useRef<number | null>(null);
+  const blessHideTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (blessTimerRef.current) {
+        window.clearTimeout(blessTimerRef.current);
+      }
+      if (blessHideTimerRef.current) {
+        window.clearTimeout(blessHideTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleBlessingClick = () => {
+    if (blessTimerRef.current) {
+      window.clearTimeout(blessTimerRef.current);
+    }
+    if (blessHideTimerRef.current) {
+      window.clearTimeout(blessHideTimerRef.current);
+    }
+    setBlessingState('shown');
+    if (blessTimerRef.current) {
+      window.clearTimeout(blessTimerRef.current);
+    }
+    blessTimerRef.current = window.setTimeout(() => {
+      setBlessingState('hiding');
+      blessHideTimerRef.current = window.setTimeout(() => {
+        setBlessingState('hidden');
+      }, 350);
+    }, 1500);
+  };
+
   return (
     <div className="app-shell">
       <div className="hero-gradient" />
@@ -23,11 +57,25 @@ function App() {
           <p>May this season wrap you in warmth, and may joy find you in every little moment.</p>
         </div>
         <div className="bottom-stack">
-          <div className="controls">
-            <span className="badge">拖拽旋转 / 滚轮缩放</span>
-            <span className="badge">指针悬停提升流光</span>
-          </div>
           <MusicPlayer />
+          <div className="controls">
+            <div className="controls-meta-wrap">
+              <button type="button" className="controls-meta" onClick={handleBlessingClick}>
+                by：李俊
+              </button>
+              {blessingState !== 'hidden' && (
+                <div
+                  className={`controls-bubble${blessingState === 'hiding' ? ' is-hiding' : ''}`}
+                >
+                  只要你愿意，“喜欢你”我可以一直说给你听！
+                </div>
+              )}
+            </div>
+            <div className="controls-row">
+              <span className="badge">拖拽旋转 / 滚轮缩放</span>
+              <span className="badge">指针悬停提升流光</span>
+            </div>
+          </div>
         </div>
       </div>
 
