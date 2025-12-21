@@ -420,10 +420,12 @@ function NeonStar({ explodeRef }: { explodeRef: React.RefObject<number> }) {
 function ExplosionVoxels({
   controlsRef,
   explodeRef,
+  collapseRef,
   count = 420,
 }: {
   controlsRef: React.RefObject<OrbitControlsImpl>;
   explodeRef: React.RefObject<number>;
+  collapseRef: React.RefObject<number>;
   count?: number;
 }) {
   const createGiftTexture = (base: string, stripe: string, accent: string) => {
@@ -725,6 +727,7 @@ function ExplosionVoxels({
     const start = 6.5; // 开始炸散的距离（越近越炸）
     const end = 4.5; // 完全炸散的距离
     const target = Math.min(1, Math.max(0, (start - dist) / (start - end)));
+    collapseRef.current = target;
     explodeRef.current = explodeRef.current ?? 0;
     explodeRef.current += (target - explodeRef.current) * 0.08;
 
@@ -855,15 +858,21 @@ function ExplosionVoxels({
   );
 }
 
-function TreeBody({ explodeRef }: { explodeRef: React.RefObject<number> }) {
+function TreeBody({
+  explodeRef,
+  collapseRef,
+}: {
+  explodeRef: React.RefObject<number>;
+  collapseRef: React.RefObject<number>;
+}) {
   const ref = useRef<Group>(null);
   const matLower = useRef<MeshPhysicalMaterial>(null);
   const matUpper = useRef<MeshPhysicalMaterial>(null);
   useFrame((_, delta) => {
     if (ref.current) {
       ref.current.rotation.y += delta * 0.12;
-      const f = explodeRef.current ?? 0;
-      ref.current.visible = f < 0.98;
+      const hide = collapseRef.current ?? 0;
+      ref.current.visible = hide < 0.55;
     }
     const f = explodeRef.current ?? 0;
     if (matLower.current) {
@@ -957,6 +966,7 @@ function PostEffects() {
 function TreeScene() {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const explodeRef = useRef(0);
+  const collapseRef = useRef(0);
   const treePos: [number, number, number] = [-0.1, 0.3, 0];
   const treeScale = 0.84;
   return (
@@ -974,9 +984,9 @@ function TreeScene() {
       />
       <Suspense fallback={null}>
         <group position={treePos} scale={treeScale}>
-          <TreeBody explodeRef={explodeRef} />
+          <TreeBody explodeRef={explodeRef} collapseRef={collapseRef} />
           <Ground />
-          <ExplosionVoxels controlsRef={controlsRef} explodeRef={explodeRef} />
+          <ExplosionVoxels controlsRef={controlsRef} explodeRef={explodeRef} collapseRef={collapseRef} />
         </group>
         <Atmosphere />
       </Suspense>
