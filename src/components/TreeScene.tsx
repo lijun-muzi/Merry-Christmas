@@ -337,20 +337,6 @@ function PhotoCard({
         <planeGeometry args={[photoSize.width, photoSize.height]} />
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
-      <group position={[bowOffsetX, bowOffsetY, bowOffsetZ]}>
-        <mesh scale={[0.18, 0.11, 0.07]}>
-          <sphereGeometry args={[1, 16, 16]} />
-          <meshStandardMaterial color="#b5121b" emissive="#7f0e14" emissiveIntensity={0.35} />
-        </mesh>
-        <mesh position={[-0.12, 0, 0]} scale={[0.22, 0.12, 0.07]} rotation={[0, 0.4, 0]}>
-          <sphereGeometry args={[1, 16, 16]} />
-          <meshStandardMaterial color="#b5121b" emissive="#7f0e14" emissiveIntensity={0.35} />
-        </mesh>
-        <mesh position={[0.12, 0, 0]} scale={[0.22, 0.12, 0.07]} rotation={[0, -0.4, 0]}>
-          <sphereGeometry args={[1, 16, 16]} />
-          <meshStandardMaterial color="#b5121b" emissive="#7f0e14" emissiveIntensity={0.35} />
-        </mesh>
-      </group>
     </group>
   );
 }
