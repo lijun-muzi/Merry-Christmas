@@ -277,7 +277,15 @@ function PhotoCard({
     const smooth = blend * blend * (3 - 2 * blend);
     const floatAmp = 0.08 * (1 - smooth * 0.5);
 
-    tempPos.copy(position).lerp(focusPosition, smooth);
+    const orbitAngle = t * 0.08;
+    const cosA = Math.cos(orbitAngle);
+    const sinA = Math.sin(orbitAngle);
+    const orbitPos = new Vector3(
+      position.x * cosA - position.z * sinA,
+      position.y,
+      position.x * sinA + position.z * cosA
+    );
+    tempPos.copy(orbitPos).lerp(focusPosition, smooth);
     tempPos.y += Math.sin(t * 0.8 + phase) * floatAmp;
     ref.current.position.copy(tempPos);
 
