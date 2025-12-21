@@ -153,9 +153,10 @@ body {
   align-items: center;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  will-change: opacity, transform;
 }
 
 .controls-bubble::after {
@@ -174,6 +175,11 @@ body {
 .controls-bubble.is-hiding {
   opacity: 0;
   transform: translateY(6px);
+}
+
+.controls-bubble.is-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .bottom-stack {

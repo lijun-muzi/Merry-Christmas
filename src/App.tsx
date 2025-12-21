@@ -6,8 +6,10 @@ import TreeScene from './components/TreeScene';
 
 function App() {
   const [blessingState, setBlessingState] = useState<'hidden' | 'shown' | 'hiding'>('hidden');
+  const [bubbleVisible, setBubbleVisible] = useState(false);
   const blessTimerRef = useRef<number | null>(null);
   const blessHideTimerRef = useRef<number | null>(null);
+  const blessRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -16,6 +18,9 @@ function App() {
       }
       if (blessHideTimerRef.current) {
         window.clearTimeout(blessHideTimerRef.current);
+      }
+      if (blessRafRef.current) {
+        cancelAnimationFrame(blessRafRef.current);
       }
     };
   }, []);
@@ -27,12 +32,20 @@ function App() {
     if (blessHideTimerRef.current) {
       window.clearTimeout(blessHideTimerRef.current);
     }
+    if (blessRafRef.current) {
+      cancelAnimationFrame(blessRafRef.current);
+    }
     setBlessingState('shown');
+    setBubbleVisible(false);
+    blessRafRef.current = requestAnimationFrame(() => {
+      setBubbleVisible(true);
+    });
     if (blessTimerRef.current) {
       window.clearTimeout(blessTimerRef.current);
     }
     blessTimerRef.current = window.setTimeout(() => {
       setBlessingState('hiding');
+      setBubbleVisible(false);
       blessHideTimerRef.current = window.setTimeout(() => {
         setBlessingState('hidden');
       }, 350);
@@ -67,7 +80,9 @@ function App() {
               </button>
               {blessingState !== 'hidden' && (
                 <div
-                  className={`controls-bubble${blessingState === 'hiding' ? ' is-hiding' : ''}`}
+                  className={`controls-bubble${
+                    blessingState === 'hiding' ? ' is-hiding' : bubbleVisible ? ' is-visible' : ''
+                  }`}
                 >
                   只要你愿意，“喜欢你”我可以一直说给你听！
                 </div>
