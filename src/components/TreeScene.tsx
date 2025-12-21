@@ -1131,7 +1131,7 @@ function Atmosphere() {
 
 function PostEffects() {
   const { size } = useThree();
-  const dofHeight = Math.min(900, Math.max(600, Math.round(size.height * 0.8)));
+  const dofHeight = Math.min(1200, Math.max(820, Math.round(size.height * 0.95)));
   return (
     <EffectComposer multisampling={4}>
       <Bloom

@@ -85,6 +85,7 @@ function App() {
         <Canvas
           shadows
           gl={{ antialias: true, toneMappingExposure: 1.1 }}
+          dpr={[1, 2.2]}
           camera={{ position: [0, 1.7, 8.5], fov: 45, near: 0.1, far: 50 }}
         >
           <color attach="background" args={["#0a2520"]} />
