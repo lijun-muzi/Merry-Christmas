@@ -300,12 +300,24 @@ function PhotoCard({
   const frameDepth = 0.05;
   const matteWidth = 1.0;
   const matteHeight = 1.42;
-  const photoWidth = 0.92;
-  const photoHeight = 1.3;
+  const maxPhotoWidth = 0.92;
+  const maxPhotoHeight = 1.3;
   const photoOffset = frameDepth * 0.55;
   const bowOffsetX = frameWidth * 0.42;
   const bowOffsetY = frameHeight * 0.42;
   const bowOffsetZ = frameDepth * 0.6;
+  const photoSize = useMemo(() => {
+    const image = texture.image as { width?: number; height?: number } | undefined;
+    if (image?.width && image?.height) {
+      const aspect = image.width / image.height;
+      const maxAspect = maxPhotoWidth / maxPhotoHeight;
+      if (aspect >= maxAspect) {
+        return { width: maxPhotoWidth, height: maxPhotoWidth / aspect };
+      }
+      return { width: maxPhotoHeight * aspect, height: maxPhotoHeight };
+    }
+    return { width: maxPhotoWidth, height: maxPhotoHeight };
+  }, [texture, maxPhotoWidth, maxPhotoHeight]);
 
   return (
     <group ref={ref} castShadow>
@@ -318,11 +330,11 @@ function PhotoCard({
         <meshStandardMaterial color="#f7f2e8" roughness={0.8} />
       </mesh>
       <mesh position={[0, 0, photoOffset]} castShadow>
-        <planeGeometry args={[photoWidth, photoHeight]} />
+        <planeGeometry args={[photoSize.width, photoSize.height]} />
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0, -photoOffset]} rotation={[0, Math.PI, 0]} castShadow>
-        <planeGeometry args={[photoWidth, photoHeight]} />
+        <planeGeometry args={[photoSize.width, photoSize.height]} />
         <meshBasicMaterial map={texture} toneMapped={false} />
       </mesh>
       <group position={[bowOffsetX, bowOffsetY, bowOffsetZ]}>
