@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import CountdownOverlay from './components/CountdownOverlay';
 import MusicPlayer from './components/MusicPlayer';
 import SnowLayer from './components/SnowLayer';
 import TreeScene from './components/TreeScene';
@@ -7,6 +8,7 @@ import TreeScene from './components/TreeScene';
 function App() {
   const [blessingState, setBlessingState] = useState<'hidden' | 'shown' | 'hiding'>('hidden');
   const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(true);
   const blessTimerRef = useRef<number | null>(null);
   const blessHideTimerRef = useRef<number | null>(null);
   const blessRafRef = useRef<number | null>(null);
@@ -57,7 +59,8 @@ function App() {
       <div className="hero-gradient" />
       <div className="corner-orb right" />
       <div className="corner-orb left" />
-      <SnowLayer count={300} />
+      {!showCountdown && <SnowLayer count={300} />}
+      {showCountdown && <CountdownOverlay onComplete={() => setShowCountdown(false)} />}
 
       <div className="ui-overlay">
         <div>
