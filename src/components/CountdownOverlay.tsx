@@ -101,7 +101,7 @@ export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) 
           <FlipDigit value={s1} />
           <FlipDigit value={s2} />
         </div>
-        <div className="countdown-hint">资源正在加载，请耐性等待～</div>
+        <div className="countdown-hint">请耐心等待哦～</div>
       </div>
     </div>
   );
