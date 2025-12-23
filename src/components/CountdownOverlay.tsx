@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SnowLayer from './SnowLayer';
 
-const TOTAL_SECONDS = 5 * 60;
+const TARGET_TIME_MS = Date.UTC(2025, 11, 24, 16, 0, 0); // Beijing 2025-12-25 00:00:00
 const FLIP_DURATION_MS = 900;
 
 type CountdownOverlayProps = {
@@ -62,14 +62,13 @@ const FlipDigit = ({ value }: { value: string }) => {
 };
 
 export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) {
-  const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
+  const getRemainingSeconds = () => Math.max(0, Math.floor((TARGET_TIME_MS - Date.now()) / 1000));
+  const [secondsLeft, setSecondsLeft] = useState(getRemainingSeconds);
   const doneRef = useRef(false);
 
   useEffect(() => {
-    const startedAt = Date.now();
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      const next = Math.max(0, TOTAL_SECONDS - elapsed);
+      const next = getRemainingSeconds();
       setSecondsLeft(next);
       if (next === 0 && !doneRef.current) {
         doneRef.current = true;
@@ -83,18 +82,30 @@ export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) 
   }, [onComplete]);
 
   const display = useMemo(() => {
-    const minutes = Math.floor(secondsLeft / 60);
+    const hours = Math.floor(secondsLeft / 3600);
+    const minutes = Math.floor((secondsLeft % 3600) / 60);
     const seconds = secondsLeft % 60;
-    return `${padTwo(minutes)}:${padTwo(seconds)}`;
+    return {
+      hours: String(hours).padStart(2, '0'),
+      minutes: padTwo(minutes),
+      seconds: padTwo(seconds),
+    };
   }, [secondsLeft]);
 
-  const [m1, m2, s1, s2] = display.replace(':', '').split('');
+  const displayText = `${display.hours}:${display.minutes}:${display.seconds}`;
+  const hoursDigits = display.hours.split('');
+  const [m1, m2] = display.minutes.split('');
+  const [s1, s2] = display.seconds.split('');
 
   return (
     <div className="countdown-overlay">
       <SnowLayer count={220} />
       <div className="countdown-content">
-        <div className="flip-clock" aria-label={`倒计时 ${display}`}>
+        <div className="flip-clock" aria-label={`倒计时 ${displayText}`}>
+          {hoursDigits.map((digit, index) => (
+            <FlipDigit key={`h-${index}`} value={digit} />
+          ))}
+          <span className="flip-colon">:</span>
           <FlipDigit value={m1} />
           <FlipDigit value={m2} />
           <span className="flip-colon">:</span>
