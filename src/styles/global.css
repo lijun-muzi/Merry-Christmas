@@ -452,6 +452,12 @@ body {
   font-size: 16px;
   letter-spacing: 0.12em;
   margin-top: 6px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.countdown-hint span {
+  display: block;
 }
 
 

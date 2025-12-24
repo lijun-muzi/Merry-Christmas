@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SnowLayer from './SnowLayer';
 
-const TARGET_TIME_MS = Date.UTC(2025, 11, 24, 16, 0, 0); // Beijing 2025-12-25 00:00:00
+const TARGET_TIME_MS = Date.UTC(2025, 11, 24, 14, 40, 0); // Beijing 2025-12-24 22:40:00
 const FLIP_DURATION_MS = 900;
 
 type CountdownOverlayProps = {
@@ -112,7 +112,10 @@ export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) 
           <FlipDigit value={s1} />
           <FlipDigit value={s2} />
         </div>
-        <div className="countdown-hint">请耐心等待哦～</div>
+        <div className="countdown-hint">
+          <span>祝灵智</span>
+          <span>-岁岁平 岁岁安-</span>
+        </div>
       </div>
     </div>
   );
